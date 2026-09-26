@@ -5,6 +5,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+	"github.com/ncruces/zenity"
 )
 
 type app_ struct {
@@ -50,28 +51,23 @@ func (a *app_) buildUI() fyne.CanvasObject {
 	a.sourceList.Resize(fyne.NewSize(680, 100))
 
 	btnAddFiles := widget.NewButtonWithIcon("เลือกไฟล์...", nil, func() {
-		fd := dialog.NewFileOpen(func(rc fyne.URIReadCloser, err error) {
-			if err != nil || rc == nil {
-				return
-			}
-			defer rc.Close()
-			a.sources = append(a.sources, rc.URI().Path())
-			a.sourceList.Refresh()
-			a.rebuildQueue()
-		}, a.win)
-		fd.Show()
+		paths, err := zenity.SelectFileMultiple(zenity.Title("เลือกไฟล์"))
+		if err != nil || len(paths) == 0 {
+			return
+		}
+		a.sources = append(a.sources, paths...)
+		a.sourceList.Refresh()
+		a.rebuildQueue()
 	})
 
 	btnAddFolder := widget.NewButtonWithIcon("เลือกโฟลเดอร์...", nil, func() {
-		fd := dialog.NewFolderOpen(func(u fyne.ListableURI, err error) {
-			if err != nil || u == nil {
-				return
-			}
-			a.sources = append(a.sources, u.Path())
-			a.sourceList.Refresh()
-			a.rebuildQueue()
-		}, a.win)
-		fd.Show()
+		path, err := zenity.SelectFile(zenity.Directory(), zenity.Title("เลือกโฟลเดอร์"))
+		if err != nil || path == "" {
+			return
+		}
+		a.sources = append(a.sources, path)
+		a.sourceList.Refresh()
+		a.rebuildQueue()
 	})
 
 	btnClear := widget.NewButtonWithIcon("ล้างรายการ", nil, func() {
