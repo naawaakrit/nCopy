@@ -3,9 +3,10 @@ package main
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
+
+	//"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
-	"github.com/ncruces/zenity"
+	"github.com/sqweek/dialog"
 )
 
 type app_ struct {
@@ -51,17 +52,17 @@ func (a *app_) buildUI() fyne.CanvasObject {
 	a.sourceList.Resize(fyne.NewSize(680, 100))
 
 	btnAddFiles := widget.NewButtonWithIcon("เลือกไฟล์...", nil, func() {
-		paths, err := zenity.SelectFileMultiple(zenity.Title("เลือกไฟล์"))
+		paths, err := dialog.File().Title("เลือกไฟล์").Load()
 		if err != nil || len(paths) == 0 {
 			return
 		}
-		a.sources = append(a.sources, paths...)
+		a.sources = append(a.sources, paths)
 		a.sourceList.Refresh()
 		a.rebuildQueue()
 	})
 
 	btnAddFolder := widget.NewButtonWithIcon("เลือกโฟลเดอร์...", nil, func() {
-		path, err := zenity.SelectFile(zenity.Directory(), zenity.Title("เลือกโฟลเดอร์"))
+		path, err := dialog.Directory().Title("เลือกโฟลเดอร์").Browse()
 		if err != nil || path == "" {
 			return
 		}
@@ -81,16 +82,16 @@ func (a *app_) buildUI() fyne.CanvasObject {
 	sourceButtons := container.NewHBox(btnAddFiles, btnAddFolder, btnClear)
 
 	a.destLabel = widget.NewLabel("(ยังไม่ได้เลือกโฟลเดอร์ปลายทาง)")
+
 	btnDest := widget.NewButtonWithIcon("เลือกปลายทาง...", nil, func() {
-		fd := dialog.NewFolderOpen(func(u fyne.ListableURI, err error) {
-			if err != nil || u == nil {
-				return
-			}
-			a.destDir = u.Path()
-			a.destLabel.SetText(a.destDir)
-		}, a.win)
-		fd.Show()
+		path, err := dialog.Directory().Title("เลือกปลายทาง").Browse()
+		if err != nil || path == "" {
+			return
+		}
+		a.destDir = path
+		a.destLabel.SetText(a.destDir)
 	})
+
 	destRow := container.NewBorder(nil, nil, nil, btnDest, a.destLabel)
 
 	policySelect := widget.NewSelect([]string{
