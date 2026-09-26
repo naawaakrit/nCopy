@@ -34,6 +34,7 @@ func (a *app_) onStart() {
 	a.ctrl.reset()
 	a.running = true
 	a.btnStart.Disable()
+	a.btnRemoveJob.Disable()
 	a.btnPause.Enable()
 	a.btnPause.SetText("หยุดชั่วคราว")
 	a.btnCancel.Enable()
@@ -242,6 +243,9 @@ func (a *app_) runCopy() {
 		a.btnStart.Enable()
 		a.btnPause.Disable()
 		a.btnCancel.Disable()
+		if a.selectedJob >= 0 && a.selectedJob < len(a.jobs) {
+			a.btnRemoveJob.Enable()
+		}
 
 		if len(errSnapshot) > 0 {
 			summary := fmt.Sprintf("พบ %d ไฟล์ที่เกิดข้อผิดพลาด:\n\n", len(errSnapshot))

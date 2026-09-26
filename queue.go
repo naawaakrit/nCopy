@@ -37,12 +37,40 @@ func (a *app_) rebuildQueue() {
 	a.applySort(jobs)
 
 	a.jobs = jobs
+	a.selectedJob = -1
+	a.fileList.UnselectAll()
+	a.btnRemoveJob.Disable()
 	a.fileList.Refresh()
 	var total int64
 	for _, j := range jobs {
 		total += j.Size
 	}
 	a.updateOverall(0, len(jobs), 0, total)
+}
+
+func (a *app_) removeSelectedJob() {
+	if a.running || a.selectedJob < 0 || a.selectedJob >= len(a.jobs) {
+		return
+	}
+
+	idx := a.selectedJob
+	a.jobs = append(a.jobs[:idx], a.jobs[idx+1:]...)
+	a.selectedJob = -1
+	a.fileList.UnselectAll()
+	a.btnRemoveJob.Disable()
+	a.fileList.Refresh()
+
+	var doneCount, totalCount int
+	var doneBytes, totalBytes int64
+	for _, job := range a.jobs {
+		totalCount++
+		totalBytes += job.Size
+		if job.Status == statusDone {
+			doneCount++
+			doneBytes += job.Size
+		}
+	}
+	a.updateOverall(doneCount, totalCount, doneBytes, totalBytes)
 }
 
 func (a *app_) applySort(jobs []*copyJob) {

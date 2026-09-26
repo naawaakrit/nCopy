@@ -27,6 +27,9 @@ type app_ struct {
 	ctrl    *controller
 	running bool
 
+	selectedJob  int
+	btnRemoveJob *widget.Button
+
 	sourceList   *widget.List
 	destLabel    *widget.Label
 	fileList     *widget.List
@@ -42,6 +45,7 @@ type app_ struct {
 }
 
 func (a *app_) buildUI() fyne.CanvasObject {
+	a.selectedJob = -1
 	a.sourceList = widget.NewList(
 		func() int { return len(a.sources) },
 		func() fyne.CanvasObject { return widget.NewLabel("") },
@@ -74,6 +78,9 @@ func (a *app_) buildUI() fyne.CanvasObject {
 	btnClear := widget.NewButtonWithIcon("ล้างรายการ", nil, func() {
 		a.sources = nil
 		a.jobs = nil
+		a.selectedJob = -1
+		a.fileList.UnselectAll()
+		a.btnRemoveJob.Disable()
 		a.sourceList.Refresh()
 		a.fileList.Refresh()
 		a.updateOverall(0, 0, 0, 0)
@@ -205,6 +212,28 @@ func (a *app_) buildUI() fyne.CanvasObject {
 			statusLbl.SetText(j.Status.String())
 		},
 	)
+	a.fileList.OnSelected = func(id widget.ListItemID) {
+		a.selectedJob = int(id)
+		if !a.running {
+			a.btnRemoveJob.Enable()
+		}
+	}
+	a.fileList.OnUnselected = func(id widget.ListItemID) {
+		if a.selectedJob == int(id) {
+			a.selectedJob = -1
+			a.btnRemoveJob.Disable()
+		}
+	}
+	a.btnRemoveJob = widget.NewButton("ลบรายการที่เลือก", func() {
+		a.removeSelectedJob()
+	})
+	a.btnRemoveJob.Disable()
+
+	queueHeader := container.NewBorder(
+		nil, nil,
+		widget.NewLabelWithStyle("คิวไฟล์ (เรียงตามตัวอักษร)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		a.btnRemoveJob,
+	)
 
 	a.currentLabel = widget.NewLabel("ยังไม่เริ่มคัดลอก")
 	a.fileProgress = widget.NewProgressBar()
@@ -240,7 +269,7 @@ func (a *app_) buildUI() fyne.CanvasObject {
 		optionsRow,
 		retryRow,
 		widget.NewSeparator(),
-		widget.NewLabelWithStyle("คิวไฟล์ (เรียงตามตัวอักษร)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		queueHeader,
 	)
 
 	center := container.NewVScroll(a.fileList)
