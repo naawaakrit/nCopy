@@ -12,9 +12,15 @@ import (
 )
 
 func main() {
-	a := app.New()
+
+	a := app.NewWithID("com.nawakarit.nCopy")
+	//a.Settings().SetTheme(&MyTheme{})
+	//icon := loadIcon(64)
+	//a.SetIcon(icon)
+
 	w := a.NewWindow("nCopy - คัดลอกไฟล์เรียงตามตัวอักษร")
 	w.Resize(fyne.NewSize(720, 640))
+	//w.SetIcon(icon)
 
 	ap := &app_{fyneApp: a, win: w, ctrl: newController(), preserveMetadata: true, maxRetry: 3}
 
