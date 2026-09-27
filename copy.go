@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Naawaakrit
+// Copyright (c) 2026 Nawakarit
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License v3.0.
 package main
 
 import (
@@ -24,6 +28,10 @@ func (a *app_) onStart() {
 	}
 	if a.destDir == "" {
 		dialog.ShowInformation("ไม่มีปลายทาง", "กรุณาเลือกโฟลเดอร์ปลายทางก่อน", a.win)
+		return
+	}
+	if err := validateDestination(a.destDir, a.sources, a.jobs); err != nil {
+		dialog.ShowInformation("ปลายทางไม่ปลอดภัย", err.Error(), a.win)
 		return
 	}
 
@@ -268,6 +276,14 @@ var errCancelled = fmt.Errorf("ยกเลิกโดยผู้ใช้")
 const copyBufSize = 1024 * 1024
 
 func (a *app_) copyOneFile(src, dst string, size int64, onProgress func(copied int64)) (int64, error) {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return 0, err
+	}
+	if dstInfo, err := os.Stat(dst); err == nil && os.SameFile(srcInfo, dstInfo) {
+		return 0, fmt.Errorf("ไฟล์ปลายทางเป็นไฟล์เดียวกับต้นทาง: %s", src)
+	}
+
 	in, err := os.Open(src)
 	if err != nil {
 		return 0, err
@@ -280,7 +296,7 @@ func (a *app_) copyOneFile(src, dst string, size int64, onProgress func(copied i
 	}
 	defer out.Close()
 
-	srcInfo, err := in.Stat()
+	srcInfo, err = in.Stat()
 	if err == nil && a.preserveMetadata {
 		_ = out.Chmod(srcInfo.Mode())
 	}
@@ -322,6 +338,48 @@ func (a *app_) copyOneFile(src, dst string, size int64, onProgress func(copied i
 	}
 
 	return copied, nil
+}
+
+func validateDestination(destDir string, sources []string, jobs []*copyJob) error {
+	resolvedDest, err := filepath.EvalSymlinks(destDir)
+	if err != nil {
+		return fmt.Errorf("ไม่สามารถตรวจสอบโฟลเดอร์ปลายทางได้: %w", err)
+	}
+	resolvedDest, err = filepath.Abs(resolvedDest)
+	if err != nil {
+		return err
+	}
+
+	for _, src := range sources {
+		info, err := os.Stat(src)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+		resolvedSource, err := filepath.EvalSymlinks(src)
+		if err != nil {
+			continue
+		}
+		resolvedSource, err = filepath.Abs(resolvedSource)
+		if err != nil {
+			continue
+		}
+		rel, err := filepath.Rel(resolvedSource, resolvedDest)
+		if err == nil && (rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))) {
+			return fmt.Errorf("เลือกโฟลเดอร์ปลายทางที่ตรงกับหรืออยู่ภายในโฟลเดอร์ต้นทางไม่ได้: %s", src)
+		}
+	}
+
+	for _, job := range jobs {
+		srcInfo, err := os.Stat(job.SrcPath)
+		if err != nil {
+			continue
+		}
+		dstInfo, err := os.Stat(filepath.Join(destDir, job.RelPath))
+		if err == nil && os.SameFile(srcInfo, dstInfo) {
+			return fmt.Errorf("ไฟล์ปลายทางตรงกับไฟล์ต้นฉบับ: %s", job.SrcPath)
+		}
+	}
+	return nil
 }
 
 func (a *app_) resolveDestination(srcPath, destPath, relPath string) (string, string) {
