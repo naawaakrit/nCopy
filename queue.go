@@ -81,22 +81,85 @@ func (a *app_) applySort(jobs []*copyJob) {
 	sort.Slice(jobs, func(i, j int) bool {
 		switch a.sortOrder {
 		case sortNameAsc:
-			return strings.ToLower(jobs[i].RelPath) < strings.ToLower(jobs[j].RelPath)
+			return naturalCompare(jobs[i].RelPath, jobs[j].RelPath) < 0
 		case sortNameDesc:
-			return strings.ToLower(jobs[i].RelPath) > strings.ToLower(jobs[j].RelPath)
+			return naturalCompare(jobs[i].RelPath, jobs[j].RelPath) > 0
 		case sortSizeAsc:
 			if jobs[i].Size == jobs[j].Size {
-				return strings.ToLower(jobs[i].RelPath) < strings.ToLower(jobs[j].RelPath)
+				return naturalCompare(jobs[i].RelPath, jobs[j].RelPath) < 0
 			}
 			return jobs[i].Size < jobs[j].Size
 		case sortSizeDesc:
 			if jobs[i].Size == jobs[j].Size {
-				return strings.ToLower(jobs[i].RelPath) < strings.ToLower(jobs[j].RelPath)
+				return naturalCompare(jobs[i].RelPath, jobs[j].RelPath) < 0
 			}
 			return jobs[i].Size > jobs[j].Size
 		}
-		return strings.ToLower(jobs[i].RelPath) < strings.ToLower(jobs[j].RelPath)
+		return naturalCompare(jobs[i].RelPath, jobs[j].RelPath) < 0
 	})
+}
+
+func naturalCompare(left, right string) int {
+	leftLower, rightLower := strings.ToLower(left), strings.ToLower(right)
+	i, j := 0, 0
+	for i < len(leftLower) && j < len(rightLower) {
+		leftChar, rightChar := leftLower[i], rightLower[j]
+		if leftChar >= '0' && leftChar <= '9' && rightChar >= '0' && rightChar <= '9' {
+			leftEnd, rightEnd := i, j
+			for leftEnd < len(leftLower) && leftLower[leftEnd] >= '0' && leftLower[leftEnd] <= '9' {
+				leftEnd++
+			}
+			for rightEnd < len(rightLower) && rightLower[rightEnd] >= '0' && rightLower[rightEnd] <= '9' {
+				rightEnd++
+			}
+
+			leftNumber, rightNumber := i, j
+			for leftNumber < leftEnd && leftLower[leftNumber] == '0' {
+				leftNumber++
+			}
+			for rightNumber < rightEnd && rightLower[rightNumber] == '0' {
+				rightNumber++
+			}
+			leftDigits, rightDigits := leftLower[leftNumber:leftEnd], rightLower[rightNumber:rightEnd]
+			if len(leftDigits) != len(rightDigits) {
+				if len(leftDigits) < len(rightDigits) {
+					return -1
+				}
+				return 1
+			}
+			if leftDigits != rightDigits {
+				if leftDigits < rightDigits {
+					return -1
+				}
+				return 1
+			}
+			i, j = leftEnd, rightEnd
+			continue
+		}
+
+		if leftChar != rightChar {
+			if leftChar < rightChar {
+				return -1
+			}
+			return 1
+		}
+		i++
+		j++
+	}
+
+	if i == len(leftLower) && j != len(rightLower) {
+		return -1
+	}
+	if j == len(rightLower) && i != len(leftLower) {
+		return 1
+	}
+	if left == right {
+		return 0
+	}
+	if left < right {
+		return -1
+	}
+	return 1
 }
 
 func (a *app_) updateOverall(doneCount, totalCount int, doneBytes, totalBytes int64) {
